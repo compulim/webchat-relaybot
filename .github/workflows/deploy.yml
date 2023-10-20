@@ -6,9 +6,11 @@ name: Build and deploy Node.js app to Azure Web App
 on:
   push:
     branches:
+      - main
       - master
   pull_request:
     branches:
+      - main
       - master
 
 jobs:
@@ -21,7 +23,7 @@ jobs:
       - name: Set up Node.js version
         uses: actions/setup-node@v1
         with:
-          node-version: '12.13.0'
+          node-version: '18'
 
       - run: npm ci
       - run: npm run build --if-preset
@@ -61,10 +63,11 @@ jobs:
 
       - name: Deploy to Azure Web App
         id: deploy
-        uses: azure/webapps-deploy@v1
+        uses: azure/webapps-deploy@v2
         with:
+          app-name: 'webchat-relaybot'
           slot-name: production
-          publish-profile: ${{ secrets.PUBLISH_PROFILE }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_4C41D56295B9485386BA5EDA456DED1F }}
           package: zipdeploy.zip
 
       - name: Ping deployment
