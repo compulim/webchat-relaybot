@@ -25,7 +25,7 @@
     "url": "https://github.com"
   },
   "dependencies": {
-    "botbuilder": "~4.8.0",
+    "botbuilder": "~4.20.1",
     "dotenv": "^8.2.0",
     "math-random": "^1.0.4",
     "node-fetch": "^2.6.0",
