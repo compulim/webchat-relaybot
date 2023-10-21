@@ -48,6 +48,13 @@ const submitDirectLineTokenCardAttachment = {
         wrap: true
       },
       {
+        isSubtle: true,
+        size: 'Small',
+        text: 'Tips: You can also send the token as a message.',
+        type: 'TextBlock',
+        wrap: true
+      },
+      {
         type: 'Input.Text',
         id: 'token',
         label: 'Direct Line token',
@@ -77,11 +84,26 @@ export default class EchoBot extends ActivityHandler {
 
     // See https://aka.ms/about-bot-activity-message to learn more about the message and other activity types.
     this.onMessage(async (context, next) => {
+      this.#reference = TurnContext.getConversationReference(context.activity);
+
       if (context.activity?.value?.id === 'StartConversation') {
         this.#abortController?.abort?.();
         this.start(context.activity.value.token);
+      } else if (!this.#relayDirectLineToken) {
+        if (context.activity.type === 'message' && (context.activity.text || '').startsWith('eyJhb')) {
+          this.#abortController?.abort?.();
+          this.start(context.activity.text);
+        } else {
+          await context.sendActivity(MessageFactory.attachment(submitDirectLineTokenCardAttachment));
+        }
       } else {
-        console.log(`Received a "${context.activity.type}" activity.`);
+        console.log(
+          `Received a "${context.activity.type}" activity.\n\n${JSON.stringify(
+            { activity: context.activity },
+            null,
+            2
+          )}`
+        );
 
         this.relayActivity(cleanActivity(context.activity));
       }
@@ -227,7 +249,7 @@ export default class EchoBot extends ActivityHandler {
 
         await this.#adapter?.continueConversation(this.#reference, async context => {
           await context.sendActivities(
-            activities.filter(({ from: { id } }) => id === this.relayBotId).map(cleanActivity)
+            activities.filter(({ from: { id, role } }) => id === this.relayBotId || role === 'bot').map(cleanActivity)
           );
         });
 
