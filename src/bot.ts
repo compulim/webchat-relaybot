@@ -78,7 +78,7 @@ export default class EchoBot extends ActivityHandler {
     // See https://aka.ms/about-bot-activity-message to learn more about the message and other activity types.
     this.onMessage(async (context, next) => {
       if (context.activity?.value?.id === 'StartConversation') {
-        this.close();
+        this.#abortController?.abort?.();
         this.start(context.activity.value.token);
       } else {
         console.log(`Received a "${context.activity.type}" activity.`);
@@ -106,7 +106,7 @@ export default class EchoBot extends ActivityHandler {
     });
 
     this.onEndOfConversation(async (_, next) => {
-      this.close();
+      this.#abortController?.abort?.();
 
       await next();
     });
@@ -126,7 +126,6 @@ export default class EchoBot extends ActivityHandler {
 
   close() {
     this.#abortController.abort();
-    this.#abortController = new AbortController();
   }
 
   get relayBotId(): string {
@@ -178,6 +177,11 @@ export default class EchoBot extends ActivityHandler {
   }
 
   async start(relayDirectLineToken: string) {
+    const abortController = new AbortController();
+    const { signal } = abortController;
+
+    this.#abortController = abortController;
+
     try {
       let watermark: number | undefined;
 
@@ -199,7 +203,7 @@ export default class EchoBot extends ActivityHandler {
         });
       });
 
-      for (let count = 0; !this.signal.aborted && count < 3_600; count++) {
+      for (let count = 0; !signal.aborted && count < 3_600; count++) {
         const url = `https://directline.botframework.com/v3/directline/conversations/${
           this.relayConversationId
         }/activities?watermark=${typeof watermark === 'undefined' ? '' : watermark}`;
@@ -217,15 +221,15 @@ export default class EchoBot extends ActivityHandler {
           watermark: number | undefined;
         };
 
-        activities?.length && console.log(JSON.stringify(activities, null, 2));
+        watermark = nextWatermark;
+
+        activities?.length && console.log(JSON.stringify({ activities, watermark: nextWatermark }, null, 2));
 
         await this.#adapter?.continueConversation(this.#reference, async context => {
           await context.sendActivities(
             activities.filter(({ from: { id } }) => id === this.relayBotId).map(cleanActivity)
           );
         });
-
-        watermark = nextWatermark;
 
         await new Promise(resolve => setTimeout(resolve, DIRECT_LINE_POLL_INTERVAL));
       }
@@ -247,7 +251,7 @@ export default class EchoBot extends ActivityHandler {
         });
       } catch (error) {}
 
-      this.close();
+      abortController.abort();
     }
   }
 }
