@@ -30,6 +30,7 @@
     "@typescript-eslint/parser": "^6.8.0",
     "botbuilder": "^4.20.1",
     "dotenv": "^16.3.1",
+    "jwt-decode": "^3.1.2",
     "math-random": "^2.0.1",
     "node-fetch": "^3.3.2",
     "prettier": "^3.0.3",
