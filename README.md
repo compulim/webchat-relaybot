@@ -1,12 +1,8 @@
-# Echo bot template
+# Relay bot
 
 # Background
 
-This echo bot is for development purpose only. Please review the architecture and code before moving to production, some areas:
-
-- Token server should be isolated, secured, and throttled appropriately
-- `trustedOrigin.js` is set up to enable multiple sandbox domains
-- Direct Line token generated have limited trusted origin and may not work in your OAuth scenario
+This bot will relay to another bot given a Direct Line token.
 
 # Setup
 
