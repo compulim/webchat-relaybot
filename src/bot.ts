@@ -89,13 +89,11 @@ export default class EchoBot extends ActivityHandler {
       if (context.activity?.value?.id === 'StartConversation') {
         this.#abortController?.abort?.();
         this.start(context.activity.value.token);
+      } else if (context.activity.type === 'message' && (context.activity.text || '').startsWith('eyJhb')) {
+        this.#abortController?.abort?.();
+        this.start(context.activity.text);
       } else if (!this.#relayDirectLineToken) {
-        if (context.activity.type === 'message' && (context.activity.text || '').startsWith('eyJhb')) {
-          this.#abortController?.abort?.();
-          this.start(context.activity.text);
-        } else {
-          await context.sendActivity(MessageFactory.attachment(submitDirectLineTokenCardAttachment));
-        }
+        await context.sendActivity(MessageFactory.attachment(submitDirectLineTokenCardAttachment));
       } else {
         console.log(
           `Received a "${context.activity.type}" activity.\n\n${JSON.stringify(
