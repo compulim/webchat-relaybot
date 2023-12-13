@@ -13,6 +13,8 @@ import fetch from 'node-fetch';
 import decode from 'jwt-decode';
 
 const DIRECT_LINE_POLL_INTERVAL = 1000;
+const IDLE_DURATION = 300_000;
+const MAXIMUM_SESSION_DURATION = 3_600_000;
 
 function cleanActivity(activity: Partial<Activity>): Partial<Activity> {
   return {
@@ -200,6 +202,12 @@ export default class EchoBot extends ActivityHandler {
     const abortController = new AbortController();
     const { signal } = abortController;
 
+    let idleTimeout: ReturnType<typeof setTimeout> | undefined = undefined;
+    const resetIdleTimeout = () => {
+      idleTimeout && clearTimeout(idleTimeout);
+      idleTimeout = setTimeout(() => abortController.abort(), IDLE_DURATION);
+    };
+
     this.#abortController = abortController;
 
     try {
@@ -223,13 +231,14 @@ export default class EchoBot extends ActivityHandler {
         });
       });
 
-      for (let count = 0; !signal.aborted && count < 3_600; count++) {
+      for (const startTime = Date.now(); !signal.aborted && Date.now() < startTime + MAXIMUM_SESSION_DURATION; ) {
         const url = `https://directline.botframework.com/v3/directline/conversations/${
           this.relayConversationId
         }/activities?watermark=${typeof watermark === 'undefined' ? '' : watermark}`;
 
         const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${this.#relayDirectLineToken}` }
+          headers: { Authorization: `Bearer ${this.#relayDirectLineToken}` },
+          signal
         });
 
         if (!res.ok) {
@@ -245,10 +254,20 @@ export default class EchoBot extends ActivityHandler {
 
         activities?.length && console.log(JSON.stringify({ activities, watermark: nextWatermark }, null, 2));
 
+        if (signal.aborted) {
+          break;
+        }
+
         await this.#adapter?.continueConversation(this.#reference, async context => {
+          if (signal.aborted) {
+            return;
+          }
+
           await context.sendActivities(
             activities.filter(({ from: { id, role } }) => id === this.relayBotId || role === 'bot').map(cleanActivity)
           );
+
+          resetIdleTimeout();
         });
 
         await new Promise(resolve => setTimeout(resolve, DIRECT_LINE_POLL_INTERVAL));
@@ -259,7 +278,7 @@ export default class EchoBot extends ActivityHandler {
       try {
         await this.#adapter?.continueConversation(this.#reference, async context => {
           await context.sendActivity({
-            text: `Failed to relay message, closing conversation.\n\n\`\`\`json\n${JSON.stringify(
+            text: `Failed to relay message.\n\n\`\`\`json\n${JSON.stringify(
               {
                 message: error.message
               },
@@ -272,6 +291,17 @@ export default class EchoBot extends ActivityHandler {
       } catch (error) {}
 
       abortController.abort();
+    } finally {
+      idleTimeout && clearTimeout(idleTimeout);
+
+      try {
+        await this.#adapter?.continueConversation(this.#reference, async context => {
+          await context.sendActivity({
+            text: `Conversation is closed.`,
+            type: 'message'
+          });
+        });
+      } catch (error) {}
     }
   }
 }
