@@ -105,15 +105,17 @@ export default class EchoBot extends ActivityHandler {
           )}`
         );
 
-        (async function () {
+        (async () => {
           try {
             await this.relayActivity(cleanActivity(context.activity));
           } catch (error) {
             console.error(error);
 
-            await this.#adapter?.continueConversation(reference, context =>
-              context.sendActivity(MessageFactory.text(`Failed to relay message to the bot.\n\n${error.message}`))
-            );
+            await this.#adapter?.continueConversation(reference, async context => {
+              await context.sendActivity(
+                MessageFactory.text(`Failed to relay message to the bot.\n\n${error.message}`)
+              );
+            });
           }
         })();
       }
