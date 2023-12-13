@@ -86,7 +86,7 @@ export default class EchoBot extends ActivityHandler {
 
     // See https://aka.ms/about-bot-activity-message to learn more about the message and other activity types.
     this.onMessage(async (context, next) => {
-      this.#reference = TurnContext.getConversationReference(context.activity);
+      const reference = (this.#reference = TurnContext.getConversationReference(context.activity));
 
       if (context.activity?.value?.id === 'StartConversation') {
         this.#abortController?.abort?.();
@@ -105,11 +105,17 @@ export default class EchoBot extends ActivityHandler {
           )}`
         );
 
-        try {
-          await this.relayActivity(cleanActivity(context.activity));
-        } catch (error) {
-          await context.sendActivity(MessageFactory.text(`Failed to relay message to the bot.\n\n${error.message}`));
-        }
+        (async function () {
+          try {
+            await this.relayActivity(cleanActivity(context.activity));
+          } catch (error) {
+            console.error(error);
+
+            await this.#adapter?.continueConversation(reference, context =>
+              context.sendActivity(MessageFactory.text(`Failed to relay message to the bot.\n\n${error.message}`))
+            );
+          }
+        })();
       }
 
       // By calling next() you ensure that the next BotHandler is run.
