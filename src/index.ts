@@ -4,6 +4,7 @@
 import './env.js';
 
 import { createServer } from 'restify';
+import { platform } from 'os';
 
 import createBotFrameworkAdapter from './createBotFrameworkAdapter.js';
 import EchoBot from './bot.js';
@@ -29,7 +30,8 @@ async function main() {
 
   // Enable Direct Line App Service Extension
   // See https://docs.microsoft.com/en-us/azure/bot-service/bot-service-channel-directline-extension-node-bot?view=azure-bot-service-4.0
-  process.env.APPSETTING_WEBSITE_SITE_NAME &&
+  platform() === 'win32' &&
+    process.env.APPSETTING_WEBSITE_SITE_NAME &&
     process.env.DIRECTLINE_EXTENSION_VERSION &&
     process.env.DirectLineExtensionKey &&
     adapter.useNamedPipe(context => bot.run(context), `${process.env.APPSETTING_WEBSITE_SITE_NAME}.directline`);
