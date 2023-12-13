@@ -285,7 +285,7 @@ export default class EchoBot extends ActivityHandler {
             activities.filter(({ from: { id, role } }) => id === this.relayBotId || role === 'bot').map(cleanActivity)
           );
 
-          resetIdleTimeout();
+          activities.length && resetIdleTimeout();
         });
 
         await new Promise(resolve => setTimeout(resolve, DIRECT_LINE_POLL_INTERVAL));
