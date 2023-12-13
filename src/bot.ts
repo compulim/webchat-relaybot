@@ -105,7 +105,11 @@ export default class EchoBot extends ActivityHandler {
           )}`
         );
 
-        this.relayActivity(cleanActivity(context.activity));
+        try {
+          this.relayActivity(cleanActivity(context.activity));
+        } catch (error) {
+          await context.sendActivity(MessageFactory.text(`Failed to relay message to the bot.\n\n${error.message}`));
+        }
       }
 
       // By calling next() you ensure that the next BotHandler is run.
