@@ -209,7 +209,13 @@ export default class EchoBot extends ActivityHandler {
     let idleTimeout: ReturnType<typeof setTimeout> | undefined = undefined;
     const resetIdleTimeout = () => {
       idleTimeout && clearTimeout(idleTimeout);
-      idleTimeout = setTimeout(() => abortController.abort(), IDLE_DURATION);
+      idleTimeout = setTimeout(async () => {
+        await this.#adapter?.continueConversation(this.#reference, async context => {
+          await context.sendActivity(MessageFactory.text('Idle timeout.'));
+        });
+
+        abortController.abort();
+      }, IDLE_DURATION);
     };
 
     this.#abortController = abortController;
@@ -276,6 +282,10 @@ export default class EchoBot extends ActivityHandler {
 
         await new Promise(resolve => setTimeout(resolve, DIRECT_LINE_POLL_INTERVAL));
       }
+
+      await this.#adapter?.continueConversation(this.#reference, async context => {
+        await context.sendActivity(MessageFactory.text('Maximum duration exceeded.'));
+      });
     } catch (error) {
       console.error(error);
 
